@@ -28,6 +28,13 @@ if not(exist(experiment_folder, 'dir'))
     error("The experiment folder does not exist");
 end
 
+if exist(fullfile(experiment_folder,"waveform/TX_waveform_S56M.mat"),'var')
+    tx_wave_file = fullfile(experiment_folder,"waveform/TX_waveform_S56M.mat");
+else
+    warning("No waveform file. Using the standard 56MHz chirp")
+    tx_wave_file = fullfile("../utilities/tx_waveform_S56M.mat");
+end
+
 c = physconst('lightspeed');
 
 radar_parameters.f0         = 1.65e9;
@@ -40,7 +47,7 @@ radar_parameters.RX_gain    = 70; % dB
 radar_parameters.lambda     = c/radar_parameters.f0;
 radar_parameters.rho_rg     = c/2/radar_parameters.B;
 
-radar_parameters.TX_waveform        = load(fullfile(experiment_folder,"waveform/TX_waveform_S56M.mat")).s_pad;
+radar_parameters.TX_waveform        = load(tx_wave_file).s_pad;
 radar_parameters.samples_waveform   = length(radar_parameters.TX_waveform);
 radar_parameters.PRI                = radar_parameters.samples_waveform/radar_parameters.fs;
 radar_parameters.PRF                = 1/radar_parameters.PRI;
