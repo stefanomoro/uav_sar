@@ -29,7 +29,7 @@ chirp_bw            = .9*chirp_sr;                          % actual chirp bandw
 
 tx_wave             = radar_parameters.TX_waveform;
 tx_wave             = single(tx_wave);
-samples_per_chirp   = radar_parameters.samples_waveform;            % 2^15 mew, 33002 for 30MSps(old)
+samples_per_chirp   = radar_parameters.samples_waveform;            % 2^15 new, 33002 for 30MSps(old)
 
 dt                  = 1/chirp_sr;
 dR                  = physconst('LightSpeed')*dt;
