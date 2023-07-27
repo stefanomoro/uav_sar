@@ -37,11 +37,20 @@ end
 
 c = physconst('lightspeed');
 
+radar_parameters.mode = "bistatic";
 radar_parameters.f0         = 1.65e9;
-radar_parameters.B          = 36e6;
-radar_parameters.fs         = 40e6;
-radar_parameters.TX_gain    = 59; % dB
-radar_parameters.RX_gain    = 70; % dB
+if strcmp(radar_parameters.mode,"monostatic")
+    radar_parameters.B          = 36e6;
+    radar_parameters.fs         = 40e6;
+    radar_parameters.TX_gain    = 60; % dB
+    radar_parameters.RX_gain    = 70; % dB
+elseif strcmp(radar_parameters.mode,"bistatic")
+    radar_parameters.B          = 56e6 * 0.9;
+    radar_parameters.fs         = 56e6;
+    radar_parameters.TX_gain    = 73; % dB
+    radar_parameters.RX_gain    = 73; % dB
+    
+end
 
 
 radar_parameters.lambda     = c/radar_parameters.f0;
@@ -59,6 +68,6 @@ end
 % N = length(radar_parameters.TX_waveform);
 % df = radar_parameters.fs/N;
 % f_ax = (-N/2:N/2-1)*df;
-% 
+%
 % figure; plot(f_ax, abs(fftshift(fft(radar_parameters.TX_waveform)))); grid on;
 % xlabel("Frequency [Hz]");
