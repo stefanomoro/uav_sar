@@ -63,7 +63,7 @@ fprintf("Loading the raw data: ");
 raw = load(file_path);
 A = raw.Draw;
 lastModDate = raw.lastModDate;
-UTCepoch_end = single(convertTo(lastModDate,'epochtime')) - radar_parameters.PRI;
+UTCepoch_end = double(convertTo(lastModDate,'epochtime')) - radar_parameters.PRI;
 fprintf("Done. \n");
 
 %%%%%%%%%%%%%%%%%%% Range compress it %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

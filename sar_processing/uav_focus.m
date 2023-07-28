@@ -31,7 +31,8 @@ addpath('./trajectories',...
 % pulse length, bandwidth, central frequency, total trajectory lenth)
 
 % Folder of the experiment.
-experiment_folder              = "D:\Droni_Campaigns\20230331_giuriati_2\exp15";
+
+experiment_folder              = "E:\data-stefano\20230713_bistatic\exp1";
 
 % Maximum range. The script will cut the data after range compression
 max_range                      = 200;
@@ -43,7 +44,7 @@ OSF                            = 4;
 % Under sampling factor for the slow-times (odd-number!). We use a very
 % high PRF, therefore we can filter the data in slow-time and undersample
 % it to improve SNR and reduce computational burden in the TDBP
-USF                            = 11;
+USF                            = 1;
 
 % Flag for the notching of the zero doppler peak (mean removal). The direct
 % path from TX to RX antennae will be very strong. This flag abilitate a
@@ -59,7 +60,7 @@ squint = 0;
 
 % Starting sample to process in slow-time. This is useful to trow away some
 % samples at the beginning of the acquisition
-index_start = 100;
+index_start = 1;
 
 
 %% Start the processing
@@ -80,6 +81,13 @@ xlabel("slow time [s]"); ylabel("fast time [s]"); axis xy
 % Cut the data to remove bad values at the beginning of the acquisition
 Drc = Drc(:,index_start:end);
 tau_ax = tau_ax(index_start:end);
+%% Bistatic processing
+[POSE, lla0, targets] = loadDroneTrajectory(experiment_folder);
+[tx_enu, rx_enu] = alignDroneRadarTime(POSE, targets, tau_ax, radar_parameters);
+Drc_corr = correctTimeShift(Drc, tx_enu, rx_enu, t_ax);
+Drc_corr1 = correctFreqShift(Drc_corr,tx_enu, rx_enu, t_ax);
+return
+
 
 % Plot the incoherent mean along slow-times to check resolution from the
 % direct path.
@@ -129,9 +137,6 @@ figure; imagesc([], t_ax*3e8/2, db(Drc_lp)); caxis([100,140]); hold on;
 plot([Nbegin Nbegin],[t_ax(1)*3e8/2, t_ax(end)*3e8/2], 'r');
 plot([Nend Nend],[t_ax(1)*3e8/2, t_ax(end)*3e8/2], 'r'); axis xy
 
-traj = loadTrajectories(experiment_folder);
-traj = alignTrajectoryWithRadarData(traj.lat, traj.lon, traj.alt, traj.speed, traj.time_stamp, ...
-    tau_ax, Nbegin, Nend);
 
 %% Focusing
 if rho_az == -1
