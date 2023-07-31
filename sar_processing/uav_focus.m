@@ -83,11 +83,12 @@ Drc = Drc(:,index_start:end);
 tau_ax = tau_ax(index_start:end);
 %% Bistatic processing
 [POSE, lla0, targets] = loadDroneTrajectory(experiment_folder);
-[tx_enu, rx_enu] = alignDroneRadarTime(POSE, targets, tau_ax, radar_parameters);
-Drc_corr = correctTimeShift(Drc, tx_enu, rx_enu, t_ax);
-Drc_corr1 = correctFreqShift(Drc_corr,tx_enu, rx_enu, t_ax);
-return
-
+if strcmp(radar_parameters.mode, "bistatic")
+    [tx_enu, rx_enu] = alignDroneRadarTime(POSE, targets, tau_ax, radar_parameters);
+    Drc_corr = correctTimeShift(Drc, tx_enu, rx_enu, t_ax);
+    Drc_corr1 = correctFreqShift(Drc_corr,tx_enu, rx_enu, radar_parameters.f0);
+    Drc = Drc_corr1;
+end
 
 % Plot the incoherent mean along slow-times to check resolution from the
 % direct path.
@@ -117,9 +118,9 @@ Drc = filterRange(Drc, t_ax, radar_parameters.B);
 
 % Low pass filter and undersample the range compressed data. We have a very
 % high PRF, so we can do it
-[Drc_lp, PRF, tau_ax] = lowPassFilterAndUndersample(Drc, radar_parameters.PRF, tau_ax, USF);
+%[Drc_lp, PRF, tau_ax] = lowPassFilterAndUndersample(Drc, radar_parameters.PRF, tau_ax, USF);
 
-showDopplerPlot(Drc_lp(1:end,:),tau_ax, t_ax(1:end), "full");
+showDopplerPlot(Drc(1:end,:),tau_ax, t_ax(1:end), "full");
 caxis([140, 200])
 
 figure; imagesc(tau_ax, t_ax*3e8/2, db(Drc_lp));
@@ -129,19 +130,18 @@ ylabel("range [m]");
 axis xy
 title(["Range compressed data", "With zero doppler notching", "With range filtering for sidelobes removal", "Filtered and undersampled in slow-time"]);
 
-% Trajectory interpolation to match the radar timestamps. This must be
-% modificed when we will have syncronized trajectories and radar data
-Nbegin  = 190;%4500;
-Nend    = 4540;%5840;%64300;
-figure; imagesc([], t_ax*3e8/2, db(Drc_lp)); caxis([100,140]); hold on;
-plot([Nbegin Nbegin],[t_ax(1)*3e8/2, t_ax(end)*3e8/2], 'r');
-plot([Nend Nend],[t_ax(1)*3e8/2, t_ax(end)*3e8/2], 'r'); axis xy
-
-
 %% Focusing
 if rho_az == -1
     rho_az = radar_parameters.rho_rg;
 end
+
+[enu2sch, center_enu] = computeENU2SCH(rx_enu);
+
+rx_sch = (rx_enu - center_enu) * enu2sch;
+tx_sch = (tx_enu - center_enu) * enu2sch;
+figure,subplot(3,1,1),plot(rx_sch(:,1))
+subplot(3,1,2),plot(rx_sch(:,2))
+subplot(3,1,3),plot(rx_sch(:,3))
 
 traj.Sx = zeros(size(Drc,2),1);
 traj.Sx(Nbegin:Nend) = linspace(-15,15,length(Nbegin:Nend));
@@ -161,7 +161,7 @@ I = focusDroneTDBP(Drc_lp(:,Nbegin:Nend), t_ax, radar_parameters.f0,...
     rho_az, squint);
 
 figure; imagesc(x,y,db(I)); colorbar; axis xy
-xlabel("x [m]"); ylabel("y [m]"); title("Focussed SAR image");
+xlabel("x [m]"); ylabel("y [m]"); title("Focused SAR image");
 axis xy tight
 set(gca, 'YDir','reverse')
 set(gca, 'XDir','reverse')
