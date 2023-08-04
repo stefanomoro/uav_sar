@@ -49,7 +49,7 @@ USF                            = 1;
 % Flag for the notching of the zero doppler peak (mean removal). The direct
 % path from TX to RX antennae will be very strong. This flag abilitate a
 % zero-doppler filtering of the data in slow-time.
-zero_doppler_notch             = true;
+zero_doppler_notch             = 0;
 
 % Azimuth resolution (-1 means same as range resolution). set the desiderd azimuth
 % resolution
@@ -111,14 +111,14 @@ if zero_doppler_notch
     caxis([100,140]);
 
     showDopplerPlot(Drc(1:end,:),tau_ax, t_ax(1:end), "full"); caxis([140,200])
-end
+
 % Filter the range compressed data with a gaussian filter in range to
 % remove sidelobes
 Drc = filterRange(Drc, t_ax, radar_parameters.B);
 
 % Low pass filter and undersample the range compressed data. We have a very
 % high PRF, so we can do it
-%[Drc_lp, PRF, tau_ax] = lowPassFilterAndUndersample(Drc, radar_parameters.PRF, tau_ax, USF);
+[Drc_lp, PRF, tau_ax] = lowPassFilterAndUndersample(Drc, radar_parameters.PRF, tau_ax, USF);
 
 showDopplerPlot(Drc(1:end,:),tau_ax, t_ax(1:end), "full");
 caxis([140, 200])
@@ -129,7 +129,7 @@ xlabel("Slow time [s]");
 ylabel("range [m]");
 axis xy
 title(["Range compressed data", "With zero doppler notching", "With range filtering for sidelobes removal", "Filtered and undersampled in slow-time"]);
-
+end
 %% Focusing
 if rho_az == -1
     rho_az = radar_parameters.rho_rg;
@@ -142,7 +142,7 @@ tx_sch = (tx_enu - center_enu) * enu2sch;
 figure,subplot(3,1,1),plot(rx_sch(:,1))
 subplot(3,1,2),plot(rx_sch(:,2))
 subplot(3,1,3),plot(rx_sch(:,3))
-
+return
 traj.Sx = zeros(size(Drc,2),1);
 traj.Sx(Nbegin:Nend) = linspace(-15,15,length(Nbegin:Nend));
 traj.Sy = zeros(size(traj.Sx));
