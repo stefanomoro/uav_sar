@@ -32,7 +32,7 @@ addpath('./trajectories',...
 
 % Folder of the experiment.
 
-experiment_folder              = "E:\data-stefano\20230713_bistatic\exp1";
+experiment_folder              = "E:\data-stefano\20230616_monostatic\exp3";
 
 % Maximum range. The script will cut the data after range compression
 max_range                      = 200;
@@ -83,8 +83,9 @@ Drc = Drc(:,index_start:end);
 tau_ax = tau_ax(index_start:end);
 %% Bistatic processing
 [POSE, lla0, targets] = loadDroneTrajectory(experiment_folder);
+[tx_enu, rx_enu] = alignDroneRadarTime(POSE, targets, tau_ax, radar_parameters);
+
 if strcmp(radar_parameters.mode, "bistatic")
-    [tx_enu, rx_enu] = alignDroneRadarTime(POSE, targets, tau_ax, radar_parameters);
     Drc_corr = correctTimeShift(Drc, tx_enu, rx_enu, t_ax);
     Drc_corr1 = correctFreqShift(Drc_corr,tx_enu, rx_enu, radar_parameters.f0);
     Drc = Drc_corr1;

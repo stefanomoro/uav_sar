@@ -37,7 +37,7 @@ end
 
 c = physconst('lightspeed');
 
-radar_parameters.mode = "bistatic";
+radar_parameters.mode = "monostatic";
 radar_parameters.f0         = 1.65e9;
 if strcmp(radar_parameters.mode,"monostatic")
     radar_parameters.B          = 36e6;
