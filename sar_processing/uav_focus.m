@@ -1,5 +1,5 @@
 % uav_focus.m
-
+%clear variables
 close all;
 clc;
 
@@ -32,7 +32,7 @@ addpath('./trajectories',...
 
 % Folder of the experiment.
 
-experiment_folder              = "D:\20230713_bistatic/exp1";
+experiment_folder              = "E:\data-stefano\20230713_bistatic\exp1";
 
 % Maximum range. The script will cut the data after range compression
 max_range                      = 500;
@@ -175,7 +175,7 @@ y_ax = 1 : radar_parameters.rho_rg/2 : 500;
 Z = zeros(size(X));
 
 Nbegin = 34122;
-Nend = 71936;
+Nend = 98932;
 [stack,~] = focusingTDBP(Drc(:,Nbegin:Nend), t_ax, radar_parameters.f0, tx_sch(Nbegin:Nend,:), rx_sch(Nbegin:Nend,:), X,Y,Z, rho_az, squint);
 %I = focusDroneTDBP(Drc_lp(:,Nbegin:Nend), t_ax, radar_parameters.f0,...
 %    traj.Sx(Nbegin:Nend), traj.Sy(Nbegin:Nend), traj.Sz(Nbegin:Nend),...
@@ -198,6 +198,6 @@ hold off
 axis xy tight
 %set(gca, 'YDir','reverse')
 %set(gca, 'XDir','reverse')
-caxis([140,220])
+caxis([100,200])
 %caxis([1e7 11e7]);
 % Autofocusing

@@ -60,10 +60,9 @@ for ang_idx = 1:length(squint)
     S = gpuArray(zeros(Ny,Nx,'single'));
 %     A = zeros(Nx,Ny,'gpuArray');
     SumCount = gpuArray(zeros(Ny,Nx,'single'));
-    for n = 1 : size(RC,2)
+    parfor n = 1 : size(RC,2)
         [Sn,Wn] = elementTDBP(X,Y,Z,TX_pos_x(n),TX_pos_y(n),TX_pos_z(n),RX_pos_x(n),...
            RX_pos_y(n),RX_pos_z(n),lambda,Dk,RC(:,n),t,f0,k_rx_0,y_ax);
-        
         
         % Give less weight to not moving positions
         % speed_norm = RX_speed(n)/median_speed;

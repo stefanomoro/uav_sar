@@ -12,7 +12,11 @@ delay = distance./physconst('LightSpeed');
 
 %Compute target wave number
 R = sqrt((RX_pos_x - X).^2 + (RX_pos_y - Y).^2);
-psi = asin((X-RX_pos_x)./R);
+
+temp = (X-RX_pos_x)./R;
+temp(temp > 1) = 1;
+temp(temp < -1) = -1;
+psi = asin(temp);
 k_rx = sin(psi).*(2*pi/lambda);
 
 %Weight function
