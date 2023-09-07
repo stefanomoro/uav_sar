@@ -9,8 +9,8 @@ cross_talk_idxs = movmean(medfilt1(cross_talk_idxs,1e3) ,1e3);
 %% TIME SHIFT CORRECTION
 tx_rx_dist = sqrt(sum((tx_ned - rx_ned).^2,2));
 R_ax = t_ax .* physconst("LightSpeed");
-R_ax_men_t = R_ax - tx_rx_dist;
-[~,corr_idx] = min(abs(R_ax_men_t),[],2);
+dR = (R_ax(2) - R_ax(1));
+corr_idx = (tx_rx_dist-R_ax(1)) ./ dR;
 
 
 cross_talk_shifts = cross_talk_idxs(:) - corr_idx(:);
@@ -25,10 +25,10 @@ H(1,:) = 0;
 RC_Dt_fixed = ifft(ifftshift(X.* H,1),Nf,1);
 RC_Dt_fixed = RC_Dt_fixed(1:size(Drc,1),:);
 %% PLOT
-figure,imagesc([],R_ax,abs(Drc)),hold on, plot(R_ax(round(cross_talk_idxs)),'r','LineWidth',1.2);
+figure,imagesc([],R_ax,abs(Drc)),hold on, plot(R_ax(round(cross_talk_idxs)),'r','LineWidth',1.2);,title("Original max tracking")
 
 Drc_corr = RC_Dt_fixed; 
-figure,imagesc([],R_ax,abs(Drc_corr))
+figure,imagesc([],R_ax,abs(Drc_corr)),hold on, plot(R_ax(round(corr_idx)),'r','LineWidth',1.2),title("Corrected")
 
 end
 

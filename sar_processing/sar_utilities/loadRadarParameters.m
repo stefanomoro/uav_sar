@@ -1,10 +1,11 @@
-function radar_parameters = loadRadarParameters(experiment_folder)
+function radar_parameters = loadRadarParameters(experiment_folder,radar_mode)
 %loadRadarParameters.m loads the radar parameters into a structure
 %
 % Inputs:
 %       experiment_folder: a string containing the experiment folder. See the script
 %                           generateProjectFolder.m for the structure of
 %                           this folder
+%       radar_mode: string to choose between monostatic and bistatic mode
 %
 % Outputs:
 %       radar_parameters: a structure containing the following values
@@ -37,7 +38,7 @@ end
 
 c = physconst('lightspeed');
 
-radar_parameters.mode = "monostatic";
+radar_parameters.mode = radar_mode;
 radar_parameters.f0         = 1.65e9;
 if strcmp(radar_parameters.mode,"monostatic")
     radar_parameters.B          = 36e6;

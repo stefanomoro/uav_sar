@@ -19,7 +19,7 @@ phasor = exp(1i*phase_shift);
 
 phasor_mat = repmat(phasor(:).',size(Drc,1),1);
 Drc_corr = Drc .* phasor_mat;
-%figure,imagesc(angle(Drc_corr)),title("Zero phase")
+figure,imagesc(angle(Drc_corr)),title("Zero phase")
 %% Apply phase from navigation
 
 tx_rx_dist = sqrt(sum((tx_ned - rx_ned).^2,2));
@@ -32,5 +32,5 @@ phasor = exp(-1i*phase_shift);
 %% FULL matrix correction
 phasor_mat = repmat(phasor(:).',size(Drc,1),1);
 Drc_corr1 = Drc_corr .* phasor_mat;
-%figure,imagesc(angle(Drc_corr1)),title("Navigation phase")
+figure,imagesc(angle(Drc_corr1)),title("Navigation phase")
 end

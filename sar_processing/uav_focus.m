@@ -32,10 +32,10 @@ addpath('./trajectories',...
 
 % Folder of the experiment.
 
-experiment_folder              = "E:\data-stefano\20230616_monostatic\exp3";
+experiment_folder              = "D:\20230713_bistatic/exp1";
 
 % Maximum range. The script will cut the data after range compression
-max_range                      = 200;
+max_range                      = 500;
 
 % Over sampling factor. After range compression and data cut, the data will be
 % oversampled by this factor in fast time
@@ -66,7 +66,7 @@ index_start = 1;
 %% Start the processing
 
 % loading the parameters of the radar (f0,PRI,PRF,BW,fs,gains, waveform, etc.)
-radar_parameters = loadRadarParameters(experiment_folder);
+radar_parameters = loadRadarParameters(experiment_folder,"bistatic");
 
 % Convert raw data from .dat to .mat
 rawDataConvert(experiment_folder, radar_parameters.samples_waveform);
@@ -113,59 +113,91 @@ if zero_doppler_notch
 
     showDopplerPlot(Drc(1:end,:),tau_ax, t_ax(1:end), "full"); caxis([140,200])
 
-% Filter the range compressed data with a gaussian filter in range to
-% remove sidelobes
-Drc = filterRange(Drc, t_ax, radar_parameters.B);
+    % Filter the range compressed data with a gaussian filter in range to
+    % remove sidelobes
+    Drc = filterRange(Drc, t_ax, radar_parameters.B);
 
-% Low pass filter and undersample the range compressed data. We have a very
-% high PRF, so we can do it
-[Drc_lp, PRF, tau_ax] = lowPassFilterAndUndersample(Drc, radar_parameters.PRF, tau_ax, USF);
+    % Low pass filter and undersample the range compressed data. We have a very
+    % high PRF, so we can do it
+    [Drc_lp, PRF, tau_ax] = lowPassFilterAndUndersample(Drc, radar_parameters.PRF, tau_ax, USF);
 
-showDopplerPlot(Drc(1:end,:),tau_ax, t_ax(1:end), "full");
-caxis([140, 200])
+    showDopplerPlot(Drc(1:end,:),tau_ax, t_ax(1:end), "full");
+    caxis([140, 200])
 
-figure; imagesc(tau_ax, t_ax*3e8/2, db(Drc_lp));
-caxis([100,140]);
-xlabel("Slow time [s]");
-ylabel("range [m]");
-axis xy
-title(["Range compressed data", "With zero doppler notching", "With range filtering for sidelobes removal", "Filtered and undersampled in slow-time"]);
+    figure; imagesc(tau_ax, t_ax*3e8/2, db(Drc_lp));
+    caxis([100,140]);
+    xlabel("Slow time [s]");
+    ylabel("range [m]");
+    axis xy
+    title(["Range compressed data", "With zero doppler notching", "With range filtering for sidelobes removal", "Filtered and undersampled in slow-time"]);
 end
-%% Focusing
-if rho_az == -1
-    rho_az = radar_parameters.rho_rg;
-end
-
+%% Coordinate transformation
+% define the rotation matrix to use SCH reference frame. It is like XYZ,
+% where S move along the aperture
 [enu2sch, center_enu] = computeENU2SCH(rx_enu);
 
 rx_sch = (rx_enu - center_enu) * enu2sch;
 tx_sch = (tx_enu - center_enu) * enu2sch;
-figure,subplot(3,1,1),plot(rx_sch(:,1))
-subplot(3,1,2),plot(rx_sch(:,2))
-subplot(3,1,3),plot(rx_sch(:,3))
-return
-traj.Sx = zeros(size(Drc,2),1);
-traj.Sx(Nbegin:Nend) = linspace(-15,15,length(Nbegin:Nend));
-traj.Sy = zeros(size(traj.Sx));
-traj.Sz = zeros(size(traj.Sx));
+
+for n = 1:length(targets)
+    tgt_sch(n,:) = ([targets(n).X targets(n).Y targets(n).Z] - center_enu) * enu2sch;
+end
+
+figure,subplot(3,1,1),plot(rx_sch(:,1)),title("S"),grid
+subplot(3,1,2),plot(rx_sch(:,2)), title("C"),grid
+subplot(3,1,3),plot(rx_sch(:,3)), title("H"),grid
+
+figure, plot(rx_sch(:,1),rx_sch(:,2),"LineWidth",1.7), title("Scenario"), hold on
+plot(rx_sch(1,1),rx_sch(1,2),'ro')
+for n = 1:3
+   
+    plot(tgt_sch(n,1),tgt_sch(n,2),'^r',LineWidth=1)
+end
+%TX
+plot(tgt_sch(4,1),tgt_sch(4,2),'^g',LineWidth=1)
+hold off
+%% Focusing
+rho_ax = 1;
+if rho_az == -1
+    rho_az = radar_parameters.rho_rg;
+end
+
+% traj.Sx = zeros(size(Drc,2),1);
+% traj.Sx(Nbegin:Nend) = linspace(-15,15,length(Nbegin:Nend));
+% traj.Sy = zeros(size(traj.Sx));
+% traj.Sz = zeros(size(traj.Sx));
 
 
 % Define the backprojection grid
-x = -30 : radar_parameters.rho_rg/15 : 30;
-y = 1 : -radar_parameters.rho_rg/15 : -200;
-[X,Y] = meshgrid(x,y);
+x_ax = min(rx_sch(:,1))*2 : rho_az/2 : max(rx_sch(:,1))*2;
+y_ax = 1 : radar_parameters.rho_rg/2 : 500;
+[X,Y] = meshgrid(x_ax,y_ax);
 Z = zeros(size(X));
 
-I = focusDroneTDBP(Drc_lp(:,Nbegin:Nend), t_ax, radar_parameters.f0,...
-    traj.Sx(Nbegin:Nend), traj.Sy(Nbegin:Nend), traj.Sz(Nbegin:Nend),...
-    X,Y,Z,...
-    rho_az, squint);
+Nbegin = 34122;
+Nend = 71936;
+[stack,~] = focusingTDBP(Drc(:,Nbegin:Nend), t_ax, radar_parameters.f0, tx_sch(Nbegin:Nend,:), rx_sch(Nbegin:Nend,:), X,Y,Z, rho_az, squint);
+%I = focusDroneTDBP(Drc_lp(:,Nbegin:Nend), t_ax, radar_parameters.f0,...
+%    traj.Sx(Nbegin:Nend), traj.Sy(Nbegin:Nend), traj.Sz(Nbegin:Nend),...
+%    X,Y,Z,...
+%    rho_az, squint);
+%%
+% 
+I = stack(:,:,1);
 
-figure; imagesc(x,y,db(I)); colorbar; axis xy
+figure; imagesc(x_ax,y_ax,db(I)); colorbar; axis xy
 xlabel("x [m]"); ylabel("y [m]"); title("Focused SAR image");
+
+for n = 1:3
+    hold on
+    plot(tgt_sch(n,1),tgt_sch(n,2),'^r',LineWidth=1)
+end
+%TX
+plot(tgt_sch(4,1),tgt_sch(4,2),'^g',LineWidth=1)
+hold off
 axis xy tight
-set(gca, 'YDir','reverse')
-set(gca, 'XDir','reverse')
-caxis([100,150])
+%set(gca, 'YDir','reverse')
+%set(gca, 'XDir','reverse')
+caxis([140,220])
 %caxis([1e7 11e7]);
 % Autofocusing
