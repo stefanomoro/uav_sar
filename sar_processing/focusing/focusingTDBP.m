@@ -49,6 +49,14 @@ focused_stack = zeros(size(X,1),size(X,2),length(squint),'single');
 % focus.not_coh_sum = zeros(size(focus.Focused_vec),'single');
 %SumCount = zeros(size(focused_stack),'single');
 
+%check for interference
+if strcmp(radar_parameters.mode,"bistatic")
+    sumCol = sum(abs(Drc),1);
+    th = 2.5 * mean(sumCol);
+    goodIdx = find(sumCol < th);
+end
+
+
 tic
 for ang_idx = 1:length(squint)
     waitbar(ang_idx/length(squint),wbar,strcat("Backprojecting n "...
@@ -60,7 +68,9 @@ for ang_idx = 1:length(squint)
     S = gpuArray(zeros(Ny,Nx,'single'));
 %     A = zeros(Nx,Ny,'gpuArray');
     SumCount = gpuArray(zeros(Ny,Nx,'single'));
-    parfor n = 1 : size(RC,2)
+    % parfor n = 1 : size(RC,2)
+    parfor ii = 1 : length(goodIdx)
+        n = goodIdx(ii);
         [Sn,Wn] = elementTDBP(X,Y,Z,TX_pos_x(n),TX_pos_y(n),TX_pos_z(n),RX_pos_x(n),...
            RX_pos_y(n),RX_pos_z(n),lambda,Dk,RC(:,n),t,f0,k_rx_0,y_ax);
         
