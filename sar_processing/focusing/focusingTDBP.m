@@ -1,4 +1,4 @@
-function [focused_stack,SumCount] = focusingTDBP(Drc, t_ax, f0, tx_sch, rx_sch, X,Y,Z, rho_az, squint)
+function [focused_stack,sumCount] = focusingTDBP(Drc, t_ax, f0, tx_sch, rx_sch, rx_speed, X,Y,Z, rho_az, squint)
 % function I = focusDroneTDBP(Drc, t_ax, f0, tx_sch, rx_sch, X,Y,Z, rho_az, squint)
 
 %FOCUSINGTDBP compute the focusing on the defined grid with TDBP
@@ -35,19 +35,19 @@ TX_pos = single(tx_sch);
 TX_pos_x = gpuArray(TX_pos(:,1));TX_pos_y = gpuArray(TX_pos(:,2));TX_pos_z = gpuArray(TX_pos(:,3));
 RX_pos = single(rx_sch);
 RX_pos_x = gpuArray(RX_pos(:,1));RX_pos_y = gpuArray(RX_pos(:,2));RX_pos_z = gpuArray(RX_pos(:,3));
-% RX_speed = gpuArray(single(RX.speed));
+RX_speed = gpuArray(single(rx_speed));
 X = gpuArray(X); Y = gpuArray(Y); Z = gpuArray(single(Z));
 f0 = single(f0); lambda = single(physconst("LightSpeed")/f0);
 RC = gpuArray(single(RC));
 y_ax = gpuArray(single(Y(:,1)));
 t = gpuArray(single(t));
-% median_speed = median(RX_speed);
+median_speed = median(RX_speed);
 
 
 % Initialize vectors for the result
 focused_stack = zeros(size(X,1),size(X,2),length(squint),'single');
 % focus.not_coh_sum = zeros(size(focus.Focused_vec),'single');
-%SumCount = zeros(size(focused_stack),'single');
+sumCount = zeros(size(focused_stack),'single');
 
 %check for interference
 sumCol = sum(abs(Drc),1);
@@ -65,17 +65,17 @@ for ang_idx = 1:length(squint)
 
     S = gpuArray(zeros(Ny,Nx,'single'));
     %     A = zeros(Nx,Ny,'gpuArray');
-    SumCount = gpuArray(zeros(Ny,Nx,'single'));
+    sumC = gpuArray(zeros(Ny,Nx,'single'));
     % parfor n = 1 : size(RC,2)
     parfor ii = 1 : length(goodIdx)
         n = goodIdx(ii);
         [Sn,Wn] = elementTDBP(X,Y,Z,TX_pos_x(n),TX_pos_y(n),TX_pos_z(n),RX_pos_x(n),...
-            RX_pos_y(n),RX_pos_z(n),lambda,Dk,RC(:,n),t,f0,k_rx_0,y_ax);
+            RX_pos_y(n),RX_pos_z(n),rx_speed(n), median_speed, lambda,Dk,RC(:,n),t,f0,k_rx_0,y_ax);
 
         % Give less weight to not moving positions
         % speed_norm = RX_speed(n)/median_speed;
         % Count number of summations for each pixel
-        SumCount = SumCount + Wn;
+        sumC = sumC + Wn;
 
         % Coherent sum over all positions along the trajectory
         S = S + Sn;
@@ -84,7 +84,7 @@ for ang_idx = 1:length(squint)
     end
     waitbar(ang_idx/length(squint),wbar);
 
-    % SumCount(:,:,ang_idx) = gather(SumCount);
+    sumCount(:,:,ang_idx) = gather(sumC);
     focused_stack(:,:,ang_idx) = gather(S);
     %     focus.not_coh_sum(:,:,ang_idx) = gather(A);
 end

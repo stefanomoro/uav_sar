@@ -1,4 +1,4 @@
-function [Sn,Wn] = elementTDBP(X,Y,Z,TX_pos_x,TX_pos_y,TX_pos_z,RX_pos_x,RX_pos_y,RX_pos_z,lambda,Dk,RC,t,f0,k_rx_0,y_ax)
+function [Sn,Wn] = elementTDBP(X,Y,Z,TX_pos_x,TX_pos_y,TX_pos_z,RX_pos_x,RX_pos_y,RX_pos_z,RX_speed, median_speed, lambda,Dk,RC,t,f0,k_rx_0,y_ax)
 %ELEMENTFUNCTDBP Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -20,9 +20,10 @@ psi = asin(temp);
 k_rx = sin(psi).*(2*pi/lambda);
 
 %Weight function
+speed_weight = RX_speed / median_speed;
 %         Wn = rectpuls((k_rx - k_rx_0)./psi_proc);
 sigma = Dk/2;
-Wn = exp(-0.5*((k_rx - k_rx_0)./sigma).^2);
+Wn = speed_weight .* exp(-0.5*((k_rx - k_rx_0)./sigma).^2);
 
 cut = find(y_ax>RX_pos_y);                                       %Cut the back-lobe
 if(~isempty(cut))

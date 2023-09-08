@@ -39,7 +39,7 @@ max_range                      = 500;
 
 % Over sampling factor. After range compression and data cut, the data will be
 % oversampled by this factor in fast time
-OSF                            = 4;
+OSF                            = 8;
 
 % Under sampling factor for the slow-times (odd-number!). We use a very
 % high PRF, therefore we can filter the data in slow-time and undersample
@@ -56,7 +56,7 @@ zero_doppler_notch             = 0;
 rho_az = 1;
 
 % Squint for the focusing (deg).
-squint = 0;
+squint = [-15 0 15];
 
 % Starting sample to process in slow-time. This is useful to trow away some
 % samples at the beginning of the acquisition
@@ -139,25 +139,40 @@ end
 rx_sch = (rx_enu - center_enu) * enu2sch;
 tx_sch = (tx_enu - center_enu) * enu2sch;
 
-for n = 1:length(targets)
-    tgt_sch(n,:) = ([targets(n).X targets(n).Y targets(n).Z] - center_enu) * enu2sch;
-end
+rx_speed = [0;diff(rx_sch(:,1))] ./ (tau_ax(2)-tau_ax(1));
+
 
 figure,subplot(3,1,1),plot(rx_sch(:,1)),title("S"),grid
 subplot(3,1,2),plot(rx_sch(:,2)), title("C"),grid
 subplot(3,1,3),plot(rx_sch(:,3)), title("H"),grid
 
-figure, plot(rx_sch(:,1),rx_sch(:,2),"LineWidth",1.7), title("Scenario"), hold on
+for n = 1:length(targets)
+    tgt_sch(n,:) = ([targets(n).X targets(n).Y targets(n).Z] - center_enu) * enu2sch;
+end
+
+
+% Scenario ENU
+figure, plot(rx_enu(:,1),rx_enu(:,2),"LineWidth",1.7), title("Scenario ENU"), hold on
+plot(rx_enu(1,1),rx_enu(1,2),'ro')
+for n = 1:3
+    plot(targets(n).X,targets(n).Y,'^r',LineWidth=1)
+end
+%TX
+plot(targets(4).X,targets(4).Y,'^g',LineWidth=1)
+plot(targets(5).X,targets(5).Y,'^k',LineWidth=1)
+hold off
+
+
+figure, plot(rx_sch(:,1),rx_sch(:,2),"LineWidth",1.7), title("Scenario SCH"), hold on
 plot(rx_sch(1,1),rx_sch(1,2),'ro')
 for n = 1:3
-   
     plot(tgt_sch(n,1),tgt_sch(n,2),'^r',LineWidth=1)
 end
 %TX
 plot(tgt_sch(4,1),tgt_sch(4,2),'^g',LineWidth=1)
+plot(tgt_sch(5,1),tgt_sch(5,2),'^k',LineWidth=1)
 hold off
 %% Focusing
-rho_ax = 1;
 if rho_az == -1
     rho_az = radar_parameters.rho_rg;
 end
@@ -170,22 +185,25 @@ end
 
 % Define the backprojection grid
 x_ax = min(rx_sch(:,1))*2 : rho_az/2 : max(rx_sch(:,1))*2;
-y_ax = 1 : radar_parameters.rho_rg/2 : 500;
+y_ax = 1*(1 : radar_parameters.rho_rg/2 : 500);
 [X,Y] = meshgrid(x_ax,y_ax);
 Z = zeros(size(X));
 
-Nbegin = 34122;
-Nend = 98932;
-[stack,~] = focusingTDBP(Drc(:,Nbegin:Nend), t_ax, radar_parameters.f0, tx_sch(Nbegin:Nend,:), rx_sch(Nbegin:Nend,:), X,Y,Z, rho_az, squint);
+Nbegin = 35000;%exp1
+Nend = 96000;
+%Nbegin = 17157;%exp9
+%Nend = 71916;
+
+[stack,sumCount] = focusingCUDA(Drc(:,Nbegin:Nend), t_ax, radar_parameters.f0, tx_sch(Nbegin:Nend,:), rx_sch(Nbegin:Nend,:),rx_speed(Nbegin:Nend), X,Y,Z, rho_az, squint);
 %I = focusDroneTDBP(Drc_lp(:,Nbegin:Nend), t_ax, radar_parameters.f0,...
 %    traj.Sx(Nbegin:Nend), traj.Sy(Nbegin:Nend), traj.Sz(Nbegin:Nend),...
 %    X,Y,Z,...
 %    rho_az, squint);
 %%
-% 
-I = stack(:,:,1);
-
-figure; imagesc(x_ax,y_ax,db(I)); colorbar; axis xy
+squintIdx = 3;
+I = stack(:,:,squintIdx);
+Ieq = I ./ sumCount(:,:,squintIdx);
+figure; imagesc(x_ax,y_ax,10*log10(abs(I).^2)); colorbar; axis xy
 xlabel("x [m]"); ylabel("y [m]"); title("Focused SAR image");
 
 for n = 1:3
@@ -198,6 +216,6 @@ hold off
 axis xy tight
 %set(gca, 'YDir','reverse')
 %set(gca, 'XDir','reverse')
-caxis([100,200])
+caxis([5,50])
 %caxis([1e7 11e7]);
 % Autofocusing

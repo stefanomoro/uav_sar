@@ -1,4 +1,4 @@
-function [Drc_corr] = correctTimeShift(Drc, tx_ned, rx_ned, t_ax)
+function [Drc_corr] = correctTimeShift(Drc, tx_enu, rx_enu, t_ax)
 %TIME SHIFT CORRECTION correct time shift error caused by no absolute time
 %   Using navigation data to shift the all signal
 
@@ -7,7 +7,7 @@ function [Drc_corr] = correctTimeShift(Drc, tx_ned, rx_ned, t_ax)
 cross_talk_idxs = movmean(medfilt1(cross_talk_idxs,1e3) ,1e3); 
 
 %% TIME SHIFT CORRECTION
-tx_rx_dist = sqrt(sum((tx_ned - rx_ned).^2,2));
+tx_rx_dist = sqrt(sum((tx_enu - rx_enu).^2,2));
 R_ax = t_ax .* physconst("LightSpeed");
 dR = (R_ax(2) - R_ax(1));
 corr_idx = (tx_rx_dist-R_ax(1)) ./ dR;
