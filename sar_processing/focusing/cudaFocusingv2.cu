@@ -71,14 +71,14 @@ __global__ void focusTDBPKernel(float const *X, float const *Y, float const z0, 
     
     float Y_i = Y[i];
     float RX_pos_y_tau = RX_pos_y[tau];
-    if (Y_i < RX_pos_y_tau)
+    /*if (Y_i < RX_pos_y_tau)
     {
         // Backlobe of antenna, pixel is 0
         Wn[out_i] += 0.0;
         Sn[out_i].x += 0.0;
         Sn[out_i].y += 0.0;
         return;
-    };
+    };*/
     float const C = 2.99792458e8;
     float const pi = 3.1415926535897932385;
     float X_i = X[i];
@@ -88,13 +88,6 @@ __global__ void focusTDBPKernel(float const *X, float const *Y, float const z0, 
     float RX_pos_x_tau = RX_pos_x[tau];
     float RX_pos_z_tau = RX_pos_z[tau];
 
-    // Range distances from the tx antenna [m]
-    float R_tx = sqrt((TX_pos_x_tau - X_i) * (TX_pos_x_tau - X_i) + (TX_pos_y_tau - Y_i) * (TX_pos_y_tau - Y_i) + (TX_pos_z_tau - z0) * (TX_pos_z_tau - z0));
-    // Range distances from the rx antenna [m]
-    float R_rx = sqrt((RX_pos_x_tau - X_i) * (RX_pos_x_tau - X_i) + (RX_pos_y_tau - Y_i) * (RX_pos_y_tau - Y_i) + (RX_pos_z_tau - z0) * (RX_pos_z_tau - z0));
-    // Total Tx-target-Rx distance [m]
-    float distance = R_tx + R_rx;
-    float delay = distance / C;
 
     // Compute target wave number
     float R = sqrt((RX_pos_x_tau - X_i) * (RX_pos_x_tau - X_i) + (RX_pos_y_tau - Y_i) * (RX_pos_y_tau - Y_i));
@@ -104,7 +97,21 @@ __global__ void focusTDBPKernel(float const *X, float const *Y, float const z0, 
     // Weight function
     float sigma = Dk / 2;
     
-    float Wn_i = speed_weight * gaussActivFunc(k_rx - k_rx_0, sigma);
+    //float Wn_i = speed_weight * gaussActivFunc(k_rx - k_rx_0, sigma);
+    float Wn_i = gaussActivFunc(k_rx - k_rx_0, sigma);
+    if (Wn_i < 0.1){
+        return;
+    }
+
+
+
+    // Range distances from the tx antenna [m]
+    float R_tx = sqrt((TX_pos_x_tau - X_i) * (TX_pos_x_tau - X_i) + (TX_pos_y_tau - Y_i) * (TX_pos_y_tau - Y_i) + (TX_pos_z_tau - z0) * (TX_pos_z_tau - z0));
+    // Range distances from the rx antenna [m]
+    float R_rx = sqrt((RX_pos_x_tau - X_i) * (RX_pos_x_tau - X_i) + (RX_pos_y_tau - Y_i) * (RX_pos_y_tau - Y_i) + (RX_pos_z_tau - z0) * (RX_pos_z_tau - z0));
+    // Total Tx-target-Rx distance [m]
+    float distance = R_tx + R_rx;
+    float delay = distance / C;  
 
     // Backprojection of data from a single Radar position
     int const RC_zero_idx = tau * N_RC;

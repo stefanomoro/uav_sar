@@ -28,7 +28,7 @@ RC = Drc(idxs,:);
 X = single(X);
 Y = single(Y);
 %ref = [reference_x;reference_y;0];
-
+tic
 TX_pos = single(tx_sch);
 TX_pos_x = gpuArray(TX_pos(:,1));TX_pos_y = gpuArray(TX_pos(:,2));TX_pos_z = gpuArray(TX_pos(:,3));
 RX_pos = single(rx_sch);
@@ -41,6 +41,8 @@ t_ax = gpuArray(single(t_ax));
 median_speed = median(RX_speed);
 
 
+
+disp (strcat("GPU array loading time: ",num2str(toc/60)," min"))
 
 tic
     
@@ -55,6 +57,6 @@ SumCount = gather(SumCount);
 focused_stack = gather(S);
 
 
-disp (strcat("Total elaboration time: ",num2str(toc/60)," min"))
+disp (strcat("CUDA elaboration time: ",num2str(toc/60)," min"))
 end
 
