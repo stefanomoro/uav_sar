@@ -29,4 +29,5 @@ sig_tgt = sig_tgt.*phase_tgt;
 RC_synt = sig+ sig_tgt;
 
 figure,imagesc([],t_ax,abs(RC_synt)),hold on,plot(t_delay,'r',LineWidth=1.1),plot(t_delay_tgt,'g',LineWidth=1.1)
+figure,imagesc([],t_ax,abs(Drc)),hold on,plot(t_delay,'r',LineWidth=1.1),plot(t_delay_tgt,'g',LineWidth=1.1)
 % figure,imagesc([],t_ax,angle(RC_synt))

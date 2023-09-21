@@ -5,13 +5,18 @@ function [POSE,lla0, targets] = loadDroneTrajectory(experiment_folder)
 
 lla0 = load(fullfile(experiment_folder,'..',"drone_tracks","lla0.mat")).lla0;
 targets = load(fullfile(experiment_folder,'..',"drone_tracks","targets.mat")).targets;
-
 dirContent = dir(fullfile(experiment_folder,'..',"drone_tracks","track*.mat"));
 POSE = table();
 for ii = 1:numel(dirContent)
     cont = dirContent(ii);
     pos = load(fullfile(cont.folder,cont.name)).POSE;
     POSE = [POSE; pos];
+end
+if isfile(fullfile(experiment_folder,'trajectories',"tx_pos.mat"))
+    tx_pos = load(fullfile(experiment_folder,'trajectories',"tx_pos.mat")).tx_pos;
+    ENU_tx = [tx_pos.X, tx_pos.Y, tx_pos.Z];
+    TX = [repmat(ENU_tx, [size(POSE.TX,1), 1])];
+    POSE.TX = TX;
 end
 
 if isa(POSE.UTC(1), 'datetime')
