@@ -25,10 +25,10 @@ H(1,:) = 0;
 RC_Dt_fixed = ifft(ifftshift(X.* H,1),Nf,1);
 RC_Dt_fixed = RC_Dt_fixed(1:size(Drc,1),:);
 %% PLOT
-figure,imagesc([],R_ax,abs(Drc)),hold on, plot(R_ax(round(cross_talk_idxs)),'r','LineWidth',1.2);,title("Original max tracking")
+figure,imagesc([],R_ax,db(abs(Drc))),hold on, plot(R_ax(round(cross_talk_idxs)),'r','LineWidth',1.2);,title("Original max tracking")
 
 Drc_corr = RC_Dt_fixed; 
-figure,imagesc([],R_ax,abs(Drc_corr)),hold on, plot(R_ax(round(corr_idx)),'r','LineWidth',1.2),title("Corrected")
+figure,imagesc([],R_ax,db(abs(Drc_corr))),hold on, plot(R_ax(round(corr_idx)),'r','LineWidth',1.2),title("Corrected")
 
 end
 

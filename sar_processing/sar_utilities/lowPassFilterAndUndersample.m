@@ -1,4 +1,4 @@
-function [Drc, PRF, tau_ax] = lowPassFilterAndUndersample(Drc,PRF, tau_ax, USF)
+function [Drc, radar_parameters, tau_ax] = lowPassFilterAndUndersample(Drc,radar_parameters, tau_ax, USF)
 %LOWPASSFILTERANDUNDERSAMPLE Low pass the data in Doppler and undersample
 %it. This improves SNR and reduce computational burden during TDBP
 %
@@ -33,7 +33,8 @@ Drc = conv2(Drc, b, "same");
 Drc = Drc(:, 1:USF:end);
 
 % It changes also the PRF
-PRF = PRF/USF;
+radar_parameters.PRF = radar_parameters.PRF/USF;
+radar_parameters.PRI = radar_parameters.PRI*USF;
 
 % And the slow-time axis
 tau_ax = tau_ax(1:USF:end);
