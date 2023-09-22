@@ -22,6 +22,7 @@ end
 if isa(POSE.UTC(1), 'datetime')
     % Convert to UTC epoch
    POSE.epoch = double(convertTo(POSE.UTC,'epochtime'));
+   POSE.epoch = POSE.epoch + (second(POSE.UTC) - floor(second(POSE.UTC)));
 end
 
 
