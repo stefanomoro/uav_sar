@@ -110,11 +110,10 @@ Drc_lp = filterRange(Drc_lp, t_ax, radar_parameters.B);
 % caxis([140, 200])
 %
 figure; imagesc(tau_ax, t_ax*3e8/2, db(Drc_lp));
-% caxis([100,140]);
-% xlabel("Slow time [s]");
-% ylabel("range [m]");
-% axis xy
-% title(["Range compressed data", "With zero doppler notching", "With range filtering for sidelobes removal", "Filtered and undersampled in slow-time"]);
+axis xy
+xlabel("Slow time [s]");
+ylabel("range [m]");
+title(["Range compressed data with range filtering for sidelobes removal"]);
 Drc = Drc_lp;
 %% Bistatic processing
 [POSE, lla0, targets] = loadDroneTrajectory(experiment_folder);
@@ -125,7 +124,7 @@ if strcmp(radar_parameters.mode, "bistatic")
     Drc_corr1 = correctFreqShift(Drc_corr,tx_enu, rx_enu, radar_parameters.f0);
     Drc = Drc_corr1;
 end
-
+%%
 % Plot the incoherent mean along slow-times to check resolution from the
 % direct path.
 figure; plot(t_ax*3e8/2, mean(abs(Drc),2)); xlabel("range [m]"); ylabel("Amplitude");
@@ -181,7 +180,7 @@ if rho_az == -1
     rho_az = radar_parameters.rho_rg;
 end
 % Squint for the focusing (deg).
-squint = [0];
+squint = [0];%[-15 -10 -5 0 5 10 15];
 
 % traj.Sx = zeros(size(Drc,2),1);
 % traj.Sx(Nbegin:Nend) = linspace(-15,15,length(Nbegin:Nend));
@@ -191,11 +190,11 @@ squint = [0];
 
 % Define the backprojection grid
 x_ax = -100:rho_az/2:100;%min(rx_sch(:,1))*2 : rho_az/2 : max(rx_sch(:,1))*2;
-y_ax = 10-1*(0 : radar_parameters.rho_rg/2 : 200);
+y_ax = 10-1*(0 : radar_parameters.rho_rg/2 : 2000);
 [X,Y] = meshgrid(x_ax,y_ax);
 Z = zeros(size(X));
 if strcmp(exp_name,"exp1")
-    Nbegin = floor(35000/USF);%exp1
+    Nbegin = floor(34000/USF);%exp1
     Nend = floor(96000/USF);
 else
     Nbegin = floor(34755/USF);%exp9
@@ -228,7 +227,7 @@ hold off
 axis xy tight
 %set(gca, 'YDir','reverse')
 %set(gca, 'XDir','reverse')
-cax = [140,200];
+cax = [100,200];
 clim(cax)
 %caxis([1e7 11e7]);
 % Autofocusing
