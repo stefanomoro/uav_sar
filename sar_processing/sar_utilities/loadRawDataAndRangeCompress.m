@@ -124,8 +124,17 @@ end
 close(f);
 
 % Generate Tau axis
+dateStr = convertStringsToChars(directoryContent.name(1:19));
+if (strcmp(dateStr(11),'_'))
+    startDate = datetime(dateStr,"InputFormat","yyyy-MM-dd_HH_mm_ss","TimeZone","Europe/Rome");
+else
+    startDate = datetime(dateStr,"InputFormat","yyyy-MM-dd HH_mm_ss","TimeZone","Europe/Rome");
+end
+startDate = datetime(startDate,"TimeZone","UTC");
+UTCepoch_start = double(convertTo(startDate,'epochtime'));
+% remove 0.5s due to uncertainty in the timestamp
+tau_ax = (0 : size(A,2)) .* radar_parameters.PRI + UTCepoch_start - 0.5;
 
-tau_ax = UTCepoch_end - (size(A,2)-1: -1 :0) .* radar_parameters.PRI;
 t_ax = linspace(-samp_margin*dt, samp_margin*dt, length(idxs)*OSF);
 
 if strcmp(radar_parameters.mode,"monostatic")
