@@ -133,15 +133,9 @@ end
 startDate = datetime(startDate,"TimeZone","UTC");
 UTCepoch_start = double(convertTo(startDate,'epochtime'));
 % remove 0.5s due to uncertainty in the timestamp
-tau_ax = (0 : size(A,2)) .* radar_parameters.PRI + UTCepoch_start - 0.5;
+tau_ax = (0 : size(A,2)-1) .* radar_parameters.PRI + UTCepoch_start - 0.5;
 
 t_ax = linspace(-samp_margin*dt, samp_margin*dt, length(idxs)*OSF);
-
-if strcmp(radar_parameters.mode,"monostatic")
-    antDist = 2 * 88 * 1e-2;
-    sampDist = antDist/dt;
-    t_ax = linspace(-(samp_margin-sampDist)*dt,(samp_margin+sampDist)*dt, length(idxs)*OSF);
-end
 
 Drc         = m.Drc;
 

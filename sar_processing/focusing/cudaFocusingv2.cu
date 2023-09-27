@@ -97,8 +97,8 @@ __global__ void focusTDBPKernel(float const *X, float const *Y, float const z0, 
     // Weight function
     float sigma = Dk / 2;
     
-    //float Wn_i = speed_weight * gaussActivFunc(k_rx - k_rx_0, sigma);
-    float Wn_i = gaussActivFunc(k_rx - k_rx_0, sigma);
+    float Wn_i = speed_weight * gaussActivFunc(k_rx - k_rx_0, sigma);
+    // float Wn_i = gaussActivFunc(k_rx - k_rx_0, sigma);
     if (Wn_i < 0.1){
         return;
     }

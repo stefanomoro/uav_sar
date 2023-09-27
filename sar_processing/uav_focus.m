@@ -1,5 +1,5 @@
 % uav_focus.m
-%clear variables
+clear variables
 close all;
 clc;
 
@@ -31,9 +31,11 @@ addpath('./trajectories',...
 % pulse length, bandwidth, central frequency, total trajectory lenth)
 
 % Folder of the experiment.
-exp_name = "exp9";
-%experiment_folder              = "C:\Users\user\OneDrive - Politecnico di Milano\PhD\projects\UAV SAR\uav_bistatic_sar\mat_files\uav_test\20220826\radar\exp1\";
-experiment_folder              = strcat("D:\20230713_bistatic\",exp_name);
+exp_name = "exp1_old";%"exp5_mono";
+radar_mode = "bistatic";
+experiment_folder              = "D:\20220826_bistatic\exp1";
+%experiment_folder              = strcat("D:\20230713_bistatic\",exp_name);
+% experiment_folder              = strcat("D:\20230616_monostatic\exp5");
 
 % Maximum range. The script will cut the data after range compression
 max_range                      = 2000;
@@ -45,7 +47,7 @@ OSF                            = 4;
 % Under sampling factor for the slow-times (odd-number!). We use a very
 % high PRF, therefore we can filter the data in slow-time and undersample
 % it to improve SNR and reduce computational burden in the TDBP
-USF                            = 21;
+USF                            = 7;
 
 % Flag for the notching of the zero doppler peak (mean removal). The direct
 % path from TX to RX antennae will be very strong. This flag abilitate a
@@ -62,7 +64,7 @@ index_start = 1;
 %% Start the processing
 
 % loading the parameters of the radar (f0,PRI,PRF,BW,fs,gains, waveform, etc.)
-radar_parameters = loadRadarParameters(experiment_folder,"bistatic");
+radar_parameters = loadRadarParameters(experiment_folder,radar_mode);
 
 % Convert raw data from .dat to .mat
 rawDataConvert(experiment_folder, radar_parameters.samples_waveform);
@@ -72,12 +74,23 @@ rawDataConvert(experiment_folder, radar_parameters.samples_waveform);
 [Drc, t_ax, tau_ax] = loadRawDataAndRangeCompress(experiment_folder, radar_parameters, max_range, OSF);
 
 figure; imagesc(tau_ax, t_ax*3e8/2, db(Drc)); colorbar; title("Range compressed data without zero doppler notching");
-xlabel("slow time [s]"); ylabel("fast time [s]"); axis xy, %clim([80 120])
+xlabel("slow time [s]"); ylabel("fast time [s]"); axis xy, colormap jet
 
 % Cut the data to remove bad values at the beginning of the acquisition
 Drc = Drc(:,index_start:end);
 tau_ax = tau_ax(index_start:end);
+%% Bistatic processing
+[POSE, lla0, targets] = loadDroneTrajectory(experiment_folder);
+[tx_enu, rx_enu,yaw] = alignDroneRadarTime(POSE, targets, tau_ax, radar_parameters);
 
+if strcmp(radar_parameters.mode, "bistatic")
+    Drc_corr = correctTimeShift(Drc, tx_enu, rx_enu, t_ax);
+    Drc_corr = correctFreqShift(Drc_corr,tx_enu, rx_enu, radar_parameters.f0);
+    Drc = Drc_corr; clear Drc_corr;
+else
+    antDist = sqrt(sum((tx_enu(1,:) - rx_enu(1,:)).^2));
+    t_ax = t_ax + antDist / physconst("LightSpeed");
+end
 %% Nothc filtering
 if zero_doppler_notch
     % Notch filter on the zero Doppler to kill the direct path from TX antenna
@@ -95,41 +108,37 @@ if zero_doppler_notch
     colorbar;
     clim([100,140]);
 
-    showDopplerPlot(Drc(1:end,:),tau_ax, t_ax(1:end), "full"); clim([140,200])
+    showDopplerPlot(Drc,tau_ax, t_ax, "full"); clim([140,200])
+    % Drc_ll = conv2(Drc, fir1(501,12/radar_parameters.PRF), "same");
+    % showDopplerPlot(Drc_ll(1:end,:),tau_ax, t_ax(1:end), "full"); clim([140,200])
 
 end
 
 % Low pass filter and undersample the range compressed data. We have a very
 % high PRF, so we can do it
-[Drc_lp, radar_parameters, tau_ax] = lowPassFilterAndUndersample(Drc, radar_parameters, tau_ax, USF);
-
+[Drc_lp, radar_parameters_lp, tau_ax_lp] = lowPassFilterAndUndersample(Drc, radar_parameters, tau_ax, USF);
 % Filter the range compressed data with a gaussian filter in range to
 % remove sidelobes
-Drc_lp = filterRange(Drc_lp, t_ax, radar_parameters.B);
-% showDopplerPlot(Drc(1:end,:),tau_ax, t_ax(1:end), "full");
+% Drc_lp = filterRange(Drc, t_ax, radar_parameters.B);
+showDopplerPlot(Drc_lp,tau_ax_lp, t_ax, "full");
 % caxis([140, 200])
 %
-figure; imagesc(tau_ax, t_ax*3e8/2, db(Drc_lp));
+figure; imagesc(tau_ax_lp, t_ax*3e8/2, db(Drc_lp));
 axis xy
 xlabel("Slow time [s]");
 ylabel("range [m]");
 title(["Range compressed data with range filtering for sidelobes removal"]);
+colormap jet
 Drc = Drc_lp;
-%% Bistatic processing
-[POSE, lla0, targets] = loadDroneTrajectory(experiment_folder);
-[tx_enu, rx_enu,yaw] = alignDroneRadarTime(POSE, targets, tau_ax, radar_parameters);
-
-if strcmp(radar_parameters.mode, "bistatic")
-    Drc_corr = correctTimeShift(Drc, tx_enu, rx_enu, t_ax);
-    Drc_corr1 = correctFreqShift(Drc_corr,tx_enu, rx_enu, radar_parameters.f0);
-    Drc = Drc_corr1;
-end
+tau_ax = tau_ax_lp;
+rx_enu = rx_enu(1:USF:end,:);
+tx_enu = tx_enu(1:USF:end,:);
+yaw = yaw(1:USF:end);
 %%
 % Plot the incoherent mean along slow-times to check resolution from the
 % direct path.
 figure; plot(t_ax*3e8/2, mean(abs(Drc),2)); xlabel("range [m]"); ylabel("Amplitude");
 title("Resolution check from the direct path"); grid on;
-
 %% Coordinate transformation
 % define the rotation matrix to use SCH reference frame. It is like XYZ,
 % where S move along the aperture
@@ -141,9 +150,10 @@ tx_sch = (tx_enu - center_enu) * enu2sch;
 rx_speed = [0;diff(rx_sch(:,1))] ./ (tau_ax(2)-tau_ax(1));
 
 
-figure,subplot(3,1,1),plot(rx_sch(:,1)),title("S"),grid
-subplot(3,1,2),plot(rx_sch(:,2)), title("C"),grid
-subplot(3,1,3),plot(rx_sch(:,3)), title("H"),grid
+figure,subplot(4,1,1),plot(rx_sch(:,1)),title("S"),grid
+subplot(4,1,2),plot(rx_sch(:,2)), title("C"),grid
+subplot(4,1,3),plot(rx_sch(:,3)), title("H"),grid
+subplot(4,1,4),plot(yaw), title("Yaw"),grid
 
 for n = 1:length(targets)
     tgt_sch(n,:) = ([targets(n).X targets(n).Y targets(n).Z] - center_enu) * enu2sch;
@@ -162,6 +172,7 @@ plot(tx_enu(1,1),tx_enu(1,2),'*g',LineWidth=1)
 hold off
 axis equal
 
+% Scenario SCH
 figure, plot(rx_sch(:,1),rx_sch(:,2),"LineWidth",1.7), title("Scenario SCH"), hold on
 plot(rx_sch(1,1),rx_sch(1,2),'ro')
 for n = 1:size(tgt_sch,1)
@@ -172,6 +183,12 @@ plot(tx_sch(1,1),tx_sch(1,2),'*g',LineWidth=1)
 %plot(tgt_sch(5,1),tgt_sch(5,2),'^k',LineWidth=1)
 hold off
 axis equal
+%% Rectify trajectory
+rect_s = linspace(rx_sch(1,1),rx_sch(end,1),size(rx_sch,1));
+rect_c = linspace(rx_sch(1,2),rx_sch(end,2),size(rx_sch,1));
+rect_h = linspace(rx_sch(1,3),rx_sch(end,3),size(rx_sch,1));
+rx_sch = [rect_s(:),rect_c(:),rect_h(:)];
+
 %% Focusing
 % Azimuth resolution (-1 means same as range resolution). set the desiderd azimuth
 % resolution
@@ -180,25 +197,34 @@ if rho_az == -1
     rho_az = radar_parameters.rho_rg;
 end
 % Squint for the focusing (deg).
-squint = [0];%[-15 -10 -5 0 5 10 15];
-
-% traj.Sx = zeros(size(Drc,2),1);
-% traj.Sx(Nbegin:Nend) = linspace(-15,15,length(Nbegin:Nend));
-% traj.Sy = zeros(size(traj.Sx));
-% traj.Sz = zeros(size(traj.Sx));
-
+squint = -30:5:30;
 
 % Define the backprojection grid
-x_ax = -100:rho_az/2:100;%min(rx_sch(:,1))*2 : rho_az/2 : max(rx_sch(:,1))*2;
-y_ax = 10-1*(0 : radar_parameters.rho_rg/2 : 2000);
+x_ax = -100:rho_az/2:100;
+y_ax = 0+1*(0 : rho_az/2 : 1000);
 [X,Y] = meshgrid(x_ax,y_ax);
 Z = zeros(size(X));
+
 if strcmp(exp_name,"exp1")
     Nbegin = floor(34000/USF);%exp1
     Nend = floor(96000/USF);
-else
+elseif strcmp(exp_name,"exp9")
     Nbegin = floor(34755/USF);%exp9
     Nend = floor(71500/USF);
+elseif strcmp(exp_name,"exp5_mono")
+    Nbegin = 1;%exp9
+    Nend = floor(44730/USF);
+elseif strcmp(exp_name,"exp1_old")
+    % Nbegin = 1498/USF;
+    % Nend = floor(32000/USF);
+    Nbegin = floor(43400/USF);
+    Nend = floor(83678/USF);
+elseif strcmp(exp_name,"exp3_old")
+    Nbegin = floor(9331/USF);
+    Nend = floor(45941/USF);
+elseif strcmp(exp_name,"exp4_old")
+    Nbegin = 1;
+    Nend = floor(41300/USF);
 end
 [stack,sumCount] = focusingCUDA(Drc(:,Nbegin:Nend), t_ax, radar_parameters.f0, tx_sch(Nbegin:Nend,:), ...
     rx_sch(Nbegin:Nend,:),rx_speed(Nbegin:Nend), X,Y,Z, rho_az, squint);
@@ -207,31 +233,19 @@ end
 %    X,Y,Z,...
 %    rho_az, squint);
 %% Plot
-squintIdx = 1;
-I = stack(:,:,squintIdx);
-% Ieq = I ./ sumCount(:,:,squintIdx);
-figure; imagesc(x_ax,y_ax,10*log10(abs(I).^2)); colorbar; axis xy, 
+squintIdx = 2;
+I = abs(stack(:,:,squintIdx));
 
-hold on
-plot(rx_sch(:,1),rx_sch(:,2),"LineWidth",1.7)
-
-xlabel("x [m]"); ylabel("y [m]"); title("Focused SAR image");
-hold on
-for n = 1:size(tgt_sch,1)
-    plot(tgt_sch(n,1),tgt_sch(n,2),'^r',LineWidth=1)
-end
-%TX
-plot(tx_sch(1,1),tx_sch(1,2),'*g',LineWidth=1)
-%plot(tgt_sch(5,1),tgt_sch(5,2),'^k',LineWidth=1)
-hold off
-axis xy tight
-%set(gca, 'YDir','reverse')
-%set(gca, 'XDir','reverse')
-cax = [100,200];
-clim(cax)
-%caxis([1e7 11e7]);
-% Autofocusing
+cax = [100 160];
+figure,printFocused(hamming2DFilter(I,3), x_ax, y_ax, rx_sch(Nbegin:Nend,:),tx_sch(Nbegin:Nend,:),tgt_sch, cax,"Focused image with hamming")
+figure,printFocused(I, x_ax, y_ax, rx_sch(Nbegin:Nend,:),tx_sch(Nbegin:Nend,:),tgt_sch, cax,"Focused image")
 
 %% GIF
+makeGIF(stack, squint, x_ax, y_ax, rx_sch(Nbegin:Nend,:),tx_sch(Nbegin:Nend,:),tgt_sch, [80 150])
+%% Multi look
 
-makeGIF(stack,squint,x_ax,y_ax,tgt_sch,cax)
+multiLook = sum(abs(stack),3);
+
+I = multiLook;
+cax = [150 170];
+figure,printFocused(I, x_ax, y_ax, rx_sch(Nbegin:Nend,:),tx_sch(Nbegin:Nend,:),tgt_sch, cax, "Focused image")

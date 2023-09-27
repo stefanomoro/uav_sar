@@ -39,7 +39,7 @@ end
 c = physconst('lightspeed');
 
 radar_parameters.mode = radar_mode;
-radar_parameters.f0         = 1.65e9;
+radar_parameters.f0         = 2.47e9;
 fprintf("Selected Carrier Frequency %d GHz\n",radar_parameters.f0/1e9);
 if strcmp(radar_parameters.mode,"monostatic")
     radar_parameters.B          = 36e6;

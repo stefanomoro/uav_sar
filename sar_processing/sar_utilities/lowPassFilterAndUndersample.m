@@ -21,15 +21,16 @@ if rem(USF,2) ~= 1
     USF = USF - 1;
 end
 
-
-b = fir1(4*USF,1/USF,"low");
-b = b./sqrt(b*b');
-%Drc = filter(b, 1,Drc, [], 2);
-Drc = conv2(Drc, b, "same");
+%Drc_ll = conv2(Drc, fir1(501,12/radar_parameters.PRF), "same");
+    
+%  b = fir1(4*USF,1/USF,"low");
+% b = b./sqrt(b*b');
+% %Drc = filter(b, 1,Drc, [], 2);
+% Drc_ll = conv2(Drc, b, "same");
 
 % For the moment is a moving average, later on we will make this more
 % sophisticate
-%Drc = movmean(Drc,USF,2);
+Drc = movmean(Drc,USF,2);
 Drc = Drc(:, 1:USF:end);
 
 % It changes also the PRF
