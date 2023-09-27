@@ -1,4 +1,4 @@
-function [] = makeGIF(stack,squint,x_ax,y_ax,tgt_sch,c_axis)
+function [] = makeGIF(stack,squint,x_ax,y_ax,rx_sch,tx_sch,tgt_sch,cax)
 %MAKEGIF Make gif with multiple focused image, Mode => 1 not eq, 2 eq
 %   [] = makeGIF(const,scenario,RX,TX,targets,focus,mode,caxis)
 
@@ -9,21 +9,10 @@ images = cell(size(idxs));
 
 for i = 1:length(idxs)
     % F =20*log10 (filterHammingFocus(F_vec(:,:,idxs(i)),3) );
-    I =20*log10 (abs(stack(:,:,idxs(i))));
-    imagesc(x_ax,y_ax,I); colorbar; axis xy
-    colormap("jet")
-    xlabel("x [m]"); ylabel("y [m]"); title("Focused SAR image");
+    I =stack(:,:,idxs(i));
 
-    for n = 1:3
-        hold on
-        plot(tgt_sch(n,1),tgt_sch(n,2),'^r',LineWidth=1)
-    end
-    %TX
-    plot(tgt_sch(4,1),tgt_sch(4,2),'^g',LineWidth=1)
-    hold off
-    axis xy tight
-    title(strcat("Squint angle ",num2str(squint(idxs(i))),"°" ));
-    clim(c_axis)
+    printFocused(hamming2DFilter(I,3), x_ax, y_ax, rx_sch,tx_sch,tgt_sch, cax,strcat("Squint angle ",num2str(squint(idxs(i))),"°" ))
+
     frame = getframe(fig);
     images{i} = frame2im(frame);
 end
