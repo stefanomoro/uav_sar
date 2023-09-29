@@ -183,12 +183,13 @@ plot(tx_sch(1,1),tx_sch(1,2),'*g',LineWidth=1)
 %plot(tgt_sch(5,1),tgt_sch(5,2),'^k',LineWidth=1)
 hold off
 axis equal
-%% Rectify trajectory
-rect_s = linspace(rx_sch(1,1),rx_sch(end,1),size(rx_sch,1));
-rect_c = linspace(rx_sch(1,2),rx_sch(end,2),size(rx_sch,1));
-rect_h = linspace(rx_sch(1,3),rx_sch(end,3),size(rx_sch,1));
-rx_sch = [rect_s(:),rect_c(:),rect_h(:)];
-
+% %% Rectify trajectory
+% rect_s = linspace(rx_sch(1,1),rx_sch(end,1),size(rx_sch,1));
+% rect_c = linspace(rx_sch(1,2),rx_sch(end,2),size(rx_sch,1));
+% rect_h = linspace(rx_sch(1,3),rx_sch(end,3),size(rx_sch,1));
+% rx_sch = [rect_s(:),rect_c(:),rect_h(:)];
+%%
+%save("data","Drc","tau_ax","t_ax","radar_parameters","POSE","lla0","targets","tx_enu","rx_enu","yaw","enu2sch","center_enu","rx_sch","tx_sch","rx_speed","tgt_sch");
 %% Focusing
 % Azimuth resolution (-1 means same as range resolution). set the desiderd azimuth
 % resolution
@@ -198,10 +199,11 @@ if rho_az == -1
 end
 % Squint for the focusing (deg).
 squint = -30:5:30;
+superSamp = 4;
 
 % Define the backprojection grid
-x_ax = -100:rho_az/2:100;
-y_ax = 0+1*(0 : rho_az/2 : 1000);
+x_ax = -100:rho_az/superSamp:100;
+y_ax = 0+1*(0 : rho_az/superSamp : 150);
 [X,Y] = meshgrid(x_ax,y_ax);
 Z = zeros(size(X));
 
@@ -226,7 +228,7 @@ elseif strcmp(exp_name,"exp4_old")
     Nbegin = 1;
     Nend = floor(41300/USF);
 end
-[stack,sumCount] = focusingCUDA(Drc(:,Nbegin:Nend), t_ax, radar_parameters.f0, tx_sch(Nbegin:Nend,:), ...
+[stack,sumCount] = focusingCUDA(Drc_ofdm(:,Nbegin:Nend), t_ax, radar_parameters.f0, tx_sch(Nbegin:Nend,:), ...
     rx_sch(Nbegin:Nend,:),rx_speed(Nbegin:Nend), X,Y,Z, rho_az, squint);
 %I = focusDroneTDBP(Drc_lp(:,Nbegin:Nend), t_ax, radar_parameters.f0,...
 %    traj.Sx(Nbegin:Nend), traj.Sy(Nbegin:Nend), traj.Sz(Nbegin:Nend),...
@@ -244,8 +246,98 @@ figure,printFocused(I, x_ax, y_ax, rx_sch(Nbegin:Nend,:),tx_sch(Nbegin:Nend,:),t
 makeGIF(stack, squint, x_ax, y_ax, rx_sch(Nbegin:Nend,:),tx_sch(Nbegin:Nend,:),tgt_sch, [80 150])
 %% Multi look
 
-multiLook = sum(abs(stack),3);
+multiLook = sum(abs(stack),3)./size(stack,3);
 
 I = multiLook;
-cax = [150 170];
-figure,printFocused(I, x_ax, y_ax, rx_sch(Nbegin:Nend,:),tx_sch(Nbegin:Nend,:),tgt_sch, cax, "Focused image")
+cax = [120 150];
+figure,printFocused(I, x_ax, y_ax, rx_sch(Nbegin:Nend,:),tx_sch(Nbegin:Nend,:),tgt_sch, cax, "Multi look")
+%% Georeference grid
+
+geoX = zeros(size(X));
+geoY = zeros(size(X));
+
+for i = 1:size(X)
+    for j = 1:size(X,2)
+        pos = [X(i,j) Y(i,j) 0];
+        geoENU = pos * enu2sch' + center_enu;
+        posLLA = enu2lla(geoENU,lla0,"flat");
+        geoX(i,j) = posLLA(2);
+        geoY(i,j) = posLLA(1);
+    end
+end
+%%
+
+%% Prepare output colors range
+cax = [120 150];
+%outC = db(hamming2DFilter(multiLook,3));
+outC = db(multiLook);
+outC = outC - cax(1);
+outC(outC < 0) = 0;
+outC(outC > diff(cax)) = diff(cax);
+outC = outC ./ diff(cax);
+outC = outC .* 255;
+figure,imagesc(x_ax,y_ax,outC),axis xy equal tight,colormap jet,
+%%
+
+
+% [m,n] = size(geoX);            % original size
+% [gm,gn] = size(Glat);           % result size
+% [X_,Y_] = meshgrid(1:n,1:m);      % original mesh
+
+lonLim = [min(min(geoX)) max(max(geoX))];
+latLim = [min(min(geoY)) max(max(geoY))];
+pixD = 1000;
+
+lon_ax = linspace(lonLim(1),lonLim(2),pixD);
+lat_ax = linspace(latLim(1),latLim(2),pixD);
+[Longitude, Latitude ]= meshgrid(lon_ax,lat_ax);
+
+result = griddata(geoX,geoY,double(outC),Longitude,Latitude);
+
+
+dl_lat = diff(latLim)./size(result,1);
+dl_lon = diff(lonLim)./size(result,2);
+R = georefcells(latLim, lonLim, dl_lat, dl_lon);
+geotiffwrite("test.tif", result, R);
+
+
+
+
+
+
+
+%% Refocus with OFDM
+Lchirp = 2^15;
+radarFs = 56e6;
+Tchirp = Lchirp / radarFs;
+dt_ofdm = t_ofdm(2) - t_ofdm(1);
+
+Tsym = 8.92e-6;
+idxs = find([t_ofdm <= Tsym/2] .* [t_ofdm > -Tsym/2]);
+ofdmWav = signal_tx(idxs,1:ceil(Tchirp / Tsym)); ofdmWav = ofdmWav(:);
+t_wav = 0:dt_ofdm :(length(ofdmWav)-1)*(dt_ofdm);
+
+
+plot(t_wav,abs(ofdmWav))
+
+%%
+
+corr = conv(ofdmWav,conj(flipud(ofdmWav)),"same") .* dt_ofdm;
+
+[~ , peakIdx] = max(corr);
+t_wav_corr = t_wav - t_wav(peakIdx);
+idxs = find([t_wav_corr >= t_ax(1)] .* [t_wav_corr < t_ax(end)]);
+t_wav_corr = t_wav_corr(idxs);
+corr = corr(idxs);
+figure,plot(t_wav_corr,db(corr))
+%%
+OSF_corr = dt_ofdm / (t_ax(2) - t_ax(1));
+
+corr_interp = interpft(corr,length(t_ax));
+corr_interp = corr_interp ./ max(corr_interp);
+figure,plot(t_ax,db(corr_interp))
+
+%%
+Drc_ofdm = conv2(Drc,corr_interp,'same');
+conv_gain = max(max(abs(Drc_ofdm))) / max(max(abs(Drc)));
+Drc_ofdm = Drc_ofdm ./ conv_gain;

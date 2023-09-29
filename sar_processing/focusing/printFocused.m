@@ -8,13 +8,13 @@ colormap("jet")
 xlabel("x [m]"); ylabel("y [m]");
 hold on
 
-plot(rx_sch(:,1),rx_sch(:,2),"LineWidth",1.7), hold on
+plot(rx_sch(:,1),rx_sch(:,2),"-y","LineWidth",1.7), hold on
 plot(rx_sch(1,1),rx_sch(1,2),'ro')
 for n = 1:size(tgt_sch,1)
     plot(tgt_sch(n,1),tgt_sch(n,2),'^r',LineWidth=1)
 end
 %TX
-plot(tx_sch(1,1),tx_sch(1,2),'*g',LineWidth=1)
+plot(tx_sch(1,1),tx_sch(1,2),'dg',LineWidth=1)
 hold off
 axis xy tight equal
 
